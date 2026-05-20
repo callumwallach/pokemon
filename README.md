@@ -4,6 +4,19 @@ NestJS service that builds a Pokémon team from [PokéAPI](https://pokeapi.co/do
 
 ---
 
+## Live demo
+
+Deployed on Render — no setup required:
+
+| URL                                                                                                        | Description            |
+| ---------------------------------------------------------------------------------------------------------- | ---------------------- |
+| `https://pokemon-c5i3.onrender.com/pokemon/team?names=pikachu,charizard,bulbasaur,gengar,snorlax,mewtwo`  | Example request        |
+| `https://pokemon-c5i3.onrender.com/api`                                                                    | Interactive Swagger UI |
+
+> **Note:** the free Render instance spins down after inactivity — the first request may take ~30 s to cold-start.
+
+---
+
 ## Quick start
 
 **Docker (recommended — includes Redis):**
