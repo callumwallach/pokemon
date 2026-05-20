@@ -52,6 +52,7 @@ export class PokemonService {
    * @param names - Lowercase Pokémon names, pre-validated by the controller (1–6 entries).
    */
   async buildTeam(names: string[]): Promise<TeamResponse> {
+    this.logger.debug(`Building team ${names.join(', ')}`);
     const memberMap = new Map(
       await Promise.all(
         [...new Set(names)].map(
@@ -76,10 +77,17 @@ export class PokemonService {
    * @throws {BadGatewayException} On any other upstream error after all retries are exhausted.
    */
   async fetchPokemon(name: string): Promise<PokemonMember> {
+    this.logger.debug(`Fetching data for ${name}`);
+
     // Return from cache if present
     const cacheKey = `pokemon:${name}`;
     const cached = await this.cacheManager.get<PokemonMember>(cacheKey);
-    if (cached) return cached;
+    if (cached) {
+      this.logger.debug(
+        `Serving data for ${name} from cache: ${JSON.stringify(cached)}`,
+      );
+      return cached;
+    }
 
     // Retrieve raw data from API
     const raw = await this.fetchFromPokeApi(name);
@@ -87,6 +95,9 @@ export class PokemonService {
     const pokemon = this.mapPokemon(raw);
 
     // Always write to cache to populate missing entries and refresh stale data
+    this.logger.debug(
+      `Writing data for ${name} to cache: ${JSON.stringify(pokemon)}`,
+    );
     await this.cacheManager.set(cacheKey, pokemon);
     return pokemon;
   }
@@ -102,10 +113,12 @@ export class PokemonService {
    */
   private async fetchFromPokeApi(name: string): Promise<PokeApiPokemon> {
     const url = `${POKEAPI_BASE}/pokemon/${name}`;
+    this.logger.debug(`Fetching data for ${name} from ${url}`);
 
     for (let attempt = 1; attempt <= RETRY_COUNT + 1; attempt++) {
       try {
         const { data } = await this.http.axiosRef.get<PokeApiPokemon>(url);
+        this.logger.debug(`Successfully fetched data for ${name} from ${url}`);
         return data;
       } catch (err) {
         const axiosErr = err as AxiosError;
@@ -120,6 +133,9 @@ export class PokemonService {
         }
         // 5xx or network error are retried up to the limit
         if (attempt <= RETRY_COUNT) {
+          this.logger.debug(
+            `Retrying data fetch for ${name} from ${url} (attempt ${attempt} of ${RETRY_COUNT})`,
+          );
           await new Promise((resolve) =>
             setTimeout(resolve, RETRY_BASE_DELAY_MS * attempt),
           );
@@ -138,6 +154,7 @@ export class PokemonService {
    */
   private mapPokemon(raw: PokeApiPokemon): PokemonMember {
     const { name, height, weight, sprites, base_experience } = raw;
+    this.logger.debug(`Mapping raw data for ${name}`);
 
     const types = raw.types.map((t) => t.type.name);
     const abilities = raw.abilities.map((a) => a.ability.name);
@@ -182,6 +199,10 @@ export class PokemonService {
 
   /** Derives aggregate team statistics from the fully assembled member list */
   private computeTeamSummary(team: PokemonMember[]): TeamSummary {
+    this.logger.debug(
+      `Computing team summary for members: ${team.map((t) => t.name).join(', ')}`,
+    );
+
     let total_weight = 0;
     let total_height = 0;
     let total_hp = 0;
