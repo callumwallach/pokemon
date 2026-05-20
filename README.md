@@ -8,10 +8,10 @@ NestJS service that builds a Pokémon team from [PokéAPI](https://pokeapi.co/do
 
 Deployed on Render — no setup required:
 
-| URL                                                                                                        | Description            |
-| ---------------------------------------------------------------------------------------------------------- | ---------------------- |
-| `https://pokemon-c5i3.onrender.com/pokemon/team?names=pikachu,charizard,bulbasaur,gengar,snorlax,mewtwo`  | Example request        |
-| `https://pokemon-c5i3.onrender.com/api`                                                                    | Interactive Swagger UI |
+| URL                                                                                                      | Description            |
+| -------------------------------------------------------------------------------------------------------- | ---------------------- |
+| `https://pokemon-c5i3.onrender.com/pokemon/team?names=pikachu,charizard,bulbasaur,gengar,snorlax,mewtwo` | Example request        |
+| `https://pokemon-c5i3.onrender.com/api`                                                                  | Interactive Swagger UI |
 
 > **Note:** the free Render instance spins down after inactivity — the first request may take ~30 s to cold-start.
 
@@ -97,18 +97,17 @@ Height is in decimetres, weight in hectograms — PokéAPI conventions. Full sch
 ```
 GET /pokemon/team?names=pikachu,charizard
          │
-  PokemonController        validates & transforms query params (TeamQueryDto)
+  PokemonController    validates & transforms query params (TeamQueryDto)
          │
   PokemonService
-  └── buildTeam()          deduplicates names → fans out fetchPokemon() via Promise.all
-        │                  latency bounded by the slowest single fetch, not the sum
-        ├── fetchPokemon() cache-aside per unique name
-        │     ├── Redis hit ──→ return cached PokemonMember directly
-        │     └── Redis miss:
-        │           └── fetchFromPokeApi()  HTTP GET + linear-backoff retry on 5xx/network
-        │                 └── mapPokemon() / mapPokemonStats()  raw → PokemonMember
-        │           └── Redis.set()  write-through; write failures propagate unmasked
-        └── computeTeamSummary()   single O(n) pass over assembled team → TeamSummary
+         └── buildTeam()    deduplicates names → fans out fetchPokemon() via Promise.all. Latency bounded by the slowest single fetch, not the sum
+                ├── fetchPokemon()    cache-aside per unique name
+                │     ├── Redis hit ──→ return cached PokemonMember directly
+                │     └── Redis miss:
+                │             └── fetchFromPokeApi()    HTTP GET + linear-backoff retry on 5xx/network
+                │                     └── mapPokemon() / mapPokemonStats()  raw → PokemonMember
+                │             └── Redis.set()    write-through; write failures propagate unmasked
+                └── computeTeamSummary()    single O(n) pass over assembled team → TeamSummary
 ```
 
 ---
